@@ -476,6 +476,8 @@ class PlayState extends MusicBeatState
 	
 	// null checking
 	function callHUDFunc(f:BaseHUD->Void) if (playHUD != null) f(playHUD);
+
+	public static var songIsModcharted:Bool = false;
 	
 	override public function create()
 	{
@@ -1306,6 +1308,7 @@ class PlayState extends MusicBeatState
 			modManager.registerEssentialModifiers();
 			modManager.registerDefaultModifiers();
 			callOnHScripts('postModifierRegister', []);
+			Modcharts.loadModchart(modManager, SONG.song);
 			
 			new FlxTimer().start(countdownDelay, (t:FlxTimer) -> {
 				startedCountdown = true;
