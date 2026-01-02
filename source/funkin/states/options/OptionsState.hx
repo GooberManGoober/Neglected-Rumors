@@ -13,12 +13,13 @@ class OptionsState extends MusicBeatState
 	public static var onPlayState:Bool = false;
 	
 	var options:Array<String> = [
-		'Note Colors',
+		'Notes',
 		'Controls',
 		'Adjust Delay and Combo',
 		'Graphics',
 		'Visuals and UI',
-		'Gameplay'
+		'Gameplay',
+		"Misc"
 	];
 	private var grpOptions:FlxTypedGroup<Alphabet>;
 	
@@ -29,16 +30,8 @@ class OptionsState extends MusicBeatState
 	{
 		switch (label)
 		{
-			case 'Note Colors':
-				switch (ClientPrefs.noteSkin)
-				{
-					case 'Quants':
-						openSubState(new QuantNotesSubState());
-					case 'QuantStep':
-						openSubState(new QuantNotesSubState());
-					default:
-						openSubState(new NotesSubState());
-				}
+			case 'Notes':
+				openSubState(new funkin.states.options.NoteSettingsSubState());
 			case 'Controls':
 				openSubState(new funkin.states.options.ControlsSubState());
 			case 'Graphics':
@@ -47,8 +40,10 @@ class OptionsState extends MusicBeatState
 				openSubState(new funkin.states.options.VisualsUISubState());
 			case 'Gameplay':
 				openSubState(new funkin.states.options.GameplaySettingsSubState());
+			case 'Misc':
+				openSubState(new funkin.states.options.MiscSubState());
 			case 'Adjust Delay and Combo':
-				CoolUtil.loadAndSwitchState(funkin.states.options.NoteOffsetState.new);
+				FlxG.switchState(funkin.states.options.NoteOffsetState.new);
 		}
 	}
 	
@@ -57,12 +52,10 @@ class OptionsState extends MusicBeatState
 	
 	override function create()
 	{
-		#if DISCORD_ALLOWED
-		DiscordClient.changePresence("Options Menu", null);
-		#end
+		DiscordClient.changePresence("Options Menu");
 		
-		setUpScript('OptionsState');
-		script.set('this', this);
+		initStateScript('OptionsState');
+		scriptGroup.set('this', this);
 		
 		if (isHardcodedState())
 		{
@@ -71,7 +64,6 @@ class OptionsState extends MusicBeatState
 			bg.updateHitbox();
 			
 			bg.screenCenter();
-			bg.antialiasing = ClientPrefs.globalAntialiasing;
 			add(bg);
 			
 			grpOptions = new FlxTypedGroup<Alphabet>();
@@ -97,13 +89,6 @@ class OptionsState extends MusicBeatState
 		super.create();
 	}
 	
-	override function closeSubState()
-	{
-		script.call('onCloseSubState', []);
-		super.closeSubState();
-		ClientPrefs.flush();
-	}
-	
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
@@ -124,8 +109,7 @@ class OptionsState extends MusicBeatState
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 				if (onPlayState)
 				{
-					StageData.loadDirectory(PlayState.SONG);
-					CoolUtil.loadAndSwitchState(PlayState.new);
+					FlxG.switchState(PlayState.new);
 					FlxG.sound.music.volume = 0;
 				}
 				else FlxG.switchState(MainMenuState.new);

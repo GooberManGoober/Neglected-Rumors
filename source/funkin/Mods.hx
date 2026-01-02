@@ -1,16 +1,42 @@
 package funkin;
 
+import grig.audio.SampleRate;
+
 import openfl.utils.Assets;
 
+import lime.graphics.Image;
+
 import haxe.Json;
+
+import funkin.states.transitions.*;
 
 // modified from modern psych
 // much love okay
 
 typedef ModMeta =
 {
-	name:String,
-	global:Bool
+	var name:String;
+	var global:Bool;
+	
+	var ?discordClientID:String;
+	var ?windowTitle:String;
+	var ?iconFile:String;
+	
+	var ?defaultTransition:String;
+	var ?stateRedirects:RedirectableStates;
+	
+	// make sure to include .ttf or .otf!!!!
+	var ?defaultFont:String;
+}
+
+typedef RedirectableStates =
+{
+	var ?TitleState:String;
+	var ?MainMenuState:String;
+	var ?StoryMenuState:String;
+	var ?FreeplayState:String;
+	var ?CreditsState:String;
+	var ?OptionsState:String;
 }
 
 typedef ModsList =
@@ -25,12 +51,14 @@ class Mods
 	/**
 	 * The current primary loaded mod
 	 */
-	static public var currentModDirectory:String = '';
+	public static var currentModDirectory:Null<String> = '';
+	
+	public static var currentMod:Null<ModMeta> = null;
 	
 	public static final ignoreModFolders:Array<String> = [
 		'characters',
-		'custom_events',
-		'custom_notetypes',
+		'events',
+		'notetypes',
 		'data',
 		'songs',
 		'music',
@@ -42,14 +70,13 @@ class Mods
 		'weeks',
 		'fonts',
 		'scripts',
-		'achievements',
-		'noteskins'
+		'noteskins',
 	];
 	
 	/**
 	 * makes `modsList.txt` in the case it doesnt exist
 	 */
-	static function checkFile()
+	static function ensureModsListExists()
 	{
 		if (!FunkinAssets.exists('modsList.txt'))
 		{
@@ -96,7 +123,7 @@ class Mods
 	
 	public static inline function mergeAllTextsNamed(path:String, ?defaultDirectory:String = null, allowDuplicates:Bool = false)
 	{
-		if (defaultDirectory == null) defaultDirectory = Paths.getPrimaryPath();
+		if (defaultDirectory == null) defaultDirectory = Paths.getCorePath();
 		defaultDirectory = defaultDirectory.trim();
 		if (!defaultDirectory.endsWith('/')) defaultDirectory += '/';
 		if (!defaultDirectory.startsWith('assets/')) defaultDirectory = 'assets/$defaultDirectory';
@@ -125,13 +152,6 @@ class Mods
 		var foldersToCheck:Array<String> = [];
 		if (FileSystem.exists(path + fileToFind)) foldersToCheck.push(path + fileToFind);
 		
-		if (Paths.currentLevel != null && Paths.currentLevel != path)
-		{
-			@:privateAccess
-			var pth:String = Paths.getLibraryPathForce(fileToFind, Paths.currentLevel);
-			if (FileSystem.exists(pth)) foldersToCheck.push(pth);
-		}
-		
 		#if MODS_ALLOWED
 		if (mods)
 		{
@@ -142,7 +162,7 @@ class Mods
 				if (FileSystem.exists(folder) && !foldersToCheck.contains(folder)) foldersToCheck.push(folder);
 			}
 			
-			// Then "mods/" main folder
+			// Then "content/" main folder
 			var folder:String = Paths.mods(fileToFind);
 			if (FileSystem.exists(folder) && !foldersToCheck.contains(folder)) foldersToCheck.push(Paths.mods(fileToFind));
 			
@@ -157,7 +177,7 @@ class Mods
 		return foldersToCheck;
 	}
 	
-	public static function getPack(?folder:String = null):ModMeta
+	public static function getPack(?folder:String):ModMeta
 	{
 		#if MODS_ALLOWED
 		if (folder == null) folder = Mods.currentModDirectory;
@@ -170,6 +190,7 @@ class Mods
 				final json = FunkinAssets.getContent(path);
 				if (json != null && json.length > 0) return Json.parse(json);
 			}
+			catch (e) {}
 		}
 		#end
 		return null;
@@ -183,7 +204,6 @@ class Mods
 		#if MODS_ALLOWED
 		for (mod in CoolUtil.coolTextFile('modsList.txt'))
 		{
-			// trace('Mod: $mod');
 			if (mod.trim().length < 1) continue;
 			
 			var dat = mod.split("|");
@@ -195,14 +215,23 @@ class Mods
 		return list;
 	}
 	
-	static function updateModList()
+	public static function updateModList(top:String = '')
 	{
 		#if MODS_ALLOWED
-		checkFile();
+		ensureModsListExists();
 		
 		// Find all that are already ordered
 		var list:Array<{folder:String, enabled:Bool}> = [];
 		var added:Array<String> = [];
+		
+		if (top.length >= 1)
+		{
+			if (FileSystem.exists(Paths.mods(top)) && FileSystem.isDirectory(Paths.mods(top)) && !added.contains(top))
+			{
+				added.push(top);
+				list.push({folder: top, enabled: true});
+			}
+		}
 		
 		for (mod in CoolUtil.coolTextFile('modsList.txt'))
 		{
@@ -211,7 +240,7 @@ class Mods
 			if (folder.trim().length > 0
 				&& FileSystem.exists(Paths.mods(folder))
 				&& FileSystem.isDirectory(Paths.mods(folder))
-				&& !added.contains(folder))
+				&& !added.contains(folder) && folder != top)
 			{
 				added.push(folder);
 				list.push({folder: folder, enabled: (dat[1] == "1")});
@@ -225,11 +254,10 @@ class Mods
 				&& FileSystem.exists(Paths.mods(folder))
 				&& FileSystem.isDirectory(Paths.mods(folder))
 				&& !ignoreModFolders.contains(folder.toLowerCase())
-				&& !added.contains(folder))
+				&& !added.contains(folder) && folder != top)
 			{
 				added.push(folder);
-				list.push({folder: folder, enabled: true}); // i like it false by default. -bb //Well, i like it True! -Shadow Mario (2022)
-				// Shadow Mario (2023): What the fuck was bb thinking
+				list.push({folder: folder, enabled: true});
 			}
 		}
 		
@@ -237,7 +265,6 @@ class Mods
 		var fileStr:String = '';
 		for (values in list)
 		{
-			// trace(values);
 			if (fileStr.length > 0) fileStr += '\n';
 			fileStr += values.folder + '|' + (values.enabled ? '1' : '0');
 		}
@@ -248,11 +275,177 @@ class Mods
 	
 	public static function loadTopMod()
 	{
-		Mods.currentModDirectory = '';
+		currentModDirectory = '';
 		
 		#if MODS_ALLOWED
 		var list:Array<String> = Mods.parseList().enabled;
 		if (list != null && list[0] != null) Mods.currentModDirectory = list[0];
+		
+		currentMod = loadTopModConfig();
 		#end
+	}
+	
+	public static function loadTopModConfig():Null<ModMeta>
+	{
+		var pack = getPack();
+		
+		if (pack == null) return null;
+		
+		funkin.utils.WindowUtil.setTitle(pack.windowTitle ?? 'Friday Night Funkin');
+		
+		inline function resetIcon()
+		{
+			final path = Paths.getPath('images/branding/icon/icon64.png', null, true);
+			FlxG.stage.window.setIcon(Image.fromBytes(FunkinAssets.getBytes(path)));
+		}
+		
+		if (pack.iconFile != null)
+		{
+			final path = Paths.getPath('images/${pack.iconFile}.png', null, true);
+			
+			if (FunkinAssets.exists(path)) FlxG.stage.window.setIcon(Image.fromBytes(FunkinAssets.getBytes(path)));
+			else
+			{
+				resetIcon();
+				Logger.log('Could not find Icon ${pack.iconFile}', ERROR);
+			}
+		}
+		else resetIcon();
+		
+		if (pack.defaultTransition != null)
+		{
+			switch (pack.defaultTransition)
+			{
+				case 'base', 'swipe':
+					final trans = SwipeTransition;
+					
+					MusicBeatState.transitionInState = trans;
+					MusicBeatState.transitionOutState = trans;
+				case 'fade':
+					final trans = FadeTransition;
+					
+					MusicBeatState.transitionInState = trans;
+					MusicBeatState.transitionOutState = trans;
+				default:
+					ScriptedTransition.setTransition(pack.defaultTransition);
+			}
+		}
+		else
+		{
+			final trans = SwipeTransition;
+			
+			MusicBeatState.transitionInState = trans;
+			MusicBeatState.transitionOutState = trans;
+		}
+		
+		if (pack.discordClientID != null) funkin.api.DiscordClient.rpcId = pack.discordClientID;
+		else funkin.api.DiscordClient.rpcId = DiscordClient.NMV_ID;
+		
+		if (pack.defaultFont != null)
+		{
+			if (FunkinAssets.exists(Paths.font(pack.defaultFont)))
+			{
+				Paths.DEFAULT_FONT = Paths.font(pack.defaultFont);
+			}
+			else
+			{
+				Paths.DEFAULT_FONT = Paths.font('vcr.ttf');
+				Logger.log('Issue with loading ${Paths.font(pack.defaultFont)}, does it exist?', ERROR);
+			}
+		}
+		else Paths.DEFAULT_FONT = Paths.font('vcr.ttf');
+		
+		// if (pack.stateRedirects.TitleState != null) TitleState.init();
+		
+		return pack;
+	}
+	
+	public static function isStateRedirected(nextState:flixel.FlxState):Bool
+	{
+		final stateName = Type.getClassName(Type.getClass(nextState)).split('.').pop();
+		
+		if (currentMod == null || currentMod.stateRedirects == null) return false;
+		
+		var retVal = false;
+		switch (stateName)
+		{
+			case 'TitleState':
+				retVal = currentMod.stateRedirects.TitleState != null;
+			case 'MainMenuState':
+				retVal = currentMod.stateRedirects.MainMenuState != null;
+			case 'StoryMenuState':
+				retVal = currentMod.stateRedirects.StoryMenuState != null;
+			case 'FreeplayState':
+				retVal = currentMod.stateRedirects.FreeplayState != null;
+			case 'CreditsState':
+				retVal = currentMod.stateRedirects.CreditsState != null;
+			case 'OptionsState':
+				retVal = currentMod.stateRedirects.OptionsState != null;
+		}
+		
+		return retVal;
+	}
+	
+	public static function getRedirect(nextState:flixel.FlxState):Null<String>
+	{
+		final stateName = Type.getClassName(Type.getClass(nextState)).split('.').pop();
+		if (currentMod == null || currentMod.stateRedirects == null) return null;
+		
+		var retVal = null;
+		switch (stateName)
+		{
+			case 'TitleState':
+				retVal = currentMod.stateRedirects.TitleState;
+			case 'MainMenuState':
+				retVal = currentMod.stateRedirects.MainMenuState;
+			case 'StoryMenuState':
+				retVal = currentMod.stateRedirects.StoryMenuState;
+			case 'FreeplayState':
+				retVal = currentMod.stateRedirects.FreeplayState;
+			case 'CreditsState':
+				retVal = currentMod.stateRedirects.CreditsState;
+			case 'OptionsState':
+				retVal = currentMod.stateRedirects.OptionsState;
+		}
+		
+		return retVal;
+	}
+	
+	public static function getModIcon(?mod:String):String
+	{
+		if (mod.length < 1) mod = currentModDirectory;
+		
+		var retVal = 'branding/icon/fallback';
+		var pack = getPack(mod);
+		
+		if (pack != null && pack.iconFile != null) retVal = pack.iconFile;
+		
+		return retVal;
+	}
+	
+	public static function getModName(?mod:String):String
+	{
+		if (mod.length < 1) mod = currentModDirectory;
+		
+		var retVal = mod;
+		var pack = getPack(mod);
+		
+		if (pack != null && pack.name != null) retVal = pack.name;
+		
+		return retVal;
+	}
+	
+	public static function getModFont(?mod:String):String
+	{
+		if (mod.length < 1) mod = currentModDirectory;
+		
+		var retVal = Paths.font('vcr.ttf');
+		var pack = getPack(mod);
+		
+		if (pack != null && pack.defaultFont != null) retVal = Paths.font(pack.defaultFont);
+		
+		trace(retVal);
+		
+		return retVal;
 	}
 }

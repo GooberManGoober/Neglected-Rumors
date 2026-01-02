@@ -11,16 +11,6 @@ class VisualsUISubState extends BaseOptionsMenu
 		title = 'Visuals and UI';
 		rpcTitle = 'Visuals & UI Settings Menu'; // for Discord Rich Presence
 		
-		var option:Option = new Option('Note Skin:', 
-			'Changes how notes look. Quants change colour depending on the beat it\'s at, while vanilla is normal FNF',
-			'noteSkin',
-			'string',
-			'Vanilla', ['Vanilla', 'Quants', 'QuantStep']);
-		addOption(option);
-		
-		var option:Option = new Option('Note Splashes', "If unchecked, hitting \"Sick!\" notes won't show particles.", 'noteSplashes', 'bool', true);
-		addOption(option);
-		
 		var option:Option = new Option('Hide HUD', 'If checked, hides most HUD elements.', 'hideHud', 'bool', false);
 		addOption(option);
 		
@@ -48,12 +38,6 @@ class VisualsUISubState extends BaseOptionsMenu
 		option.decimals = 1;
 		addOption(option);
 		
-		#if !mobile
-		var option:Option = new Option('FPS Counter', 'If unchecked, hides FPS Counter.', 'showFPS', 'bool', true);
-		addOption(option);
-		option.onChange = onChangeFPSCounter;
-		#end
-		
 		var option:Option = new Option('Pause Screen Song:', "What song do you prefer for the Pause Screen?", 'pauseMusic', 'string', 'Tea Time', ['None', 'Breakfast', 'Tea Time']);
 		addOption(option);
 		option.onChange = onChangePauseMusic;
@@ -64,9 +48,6 @@ class VisualsUISubState extends BaseOptionsMenu
 		var option:Option = new Option('Camera Note Follow', "If unchecked, hitting notes will no longer have the camera follow in its direction.", 'camFollowsCharacters', 'bool', true);
 		addOption(option);
 		
-		var option:Option = new Option('Toggle NMV Splash Screen', "If unchecked, it will completely skip the splash screen upon the engine's boot up.", 'toggleSplashScreen', 'bool', true);
-		addOption(option);
-		
 		super();
 	}
 	
@@ -75,21 +56,14 @@ class VisualsUISubState extends BaseOptionsMenu
 	function onChangePauseMusic()
 	{
 		if (ClientPrefs.pauseMusic == 'None') FlxG.sound.music.volume = 0;
-		else FlxG.sound.playMusic(Paths.music(Paths.formatToSongPath(ClientPrefs.pauseMusic)));
+		else FunkinSound.playMusic(Paths.music(Paths.sanitize(ClientPrefs.pauseMusic)));
 		
 		changedMusic = true;
 	}
 	
 	override function destroy()
 	{
-		if (changedMusic && !OptionsState.onPlayState) FlxG.sound.playMusic(Paths.music('freakyMenu'));
+		if (changedMusic && !OptionsState.onPlayState) FunkinSound.playMusic(Paths.music('freakyMenu'));
 		super.destroy();
 	}
-	
-	#if !mobile
-	function onChangeFPSCounter()
-	{
-		if (Main.fpsVar != null) Main.fpsVar.visible = ClientPrefs.showFPS;
-	}
-	#end
 }

@@ -1,5 +1,7 @@
 package funkin.data;
 
+import funkin.backend.DebugDisplay;
+
 import flixel.input.keyboard.FlxKey;
 import flixel.util.FlxSave;
 
@@ -16,6 +18,11 @@ import funkin.data.Controls.KeyboardScheme;
 @:build(funkin.backend.macro.SaveMacro.buildSaveVars('im gonna make this do smth later okay just not rn'))
 class ClientPrefs
 {
+	// debug ------------------------------------------------------------------------//
+	@saveVar public static var inDevMode:Bool = false;
+
+    @saveVar public static var streamedMusic:Bool = true;
+	
 	// graphics ------------------------------------------------------------------------//
 	@saveVar public static var gpuCaching:Bool = true;
 	
@@ -51,9 +58,13 @@ class ClientPrefs
 	@saveVar public static var camFollowsCharacters:Bool = true;
 	
 	// gameplay ------------------------------------------------------------------------//
+	@saveVar public static var guitarHeroSustains:Bool = true;
+	
 	@saveVar public static var controllerMode:Bool = false;
 	
 	@saveVar public static var mechanics:Bool = true;
+	
+	@saveVar public static var modcharts:Bool = true;
 	
 	@saveVar public static var downScroll:Bool = false;
 	
@@ -111,6 +122,26 @@ class ClientPrefs
 	];
 	
 	// note colours ------------------------------------------------------------------------//
+	@saveVar public static var arrowRGBdef:Array<Array<FlxColor>> = [
+		[0xFFC24B99, 0xFFFFFFFF, 0xFF3C1F56],
+		[0xFF00FFFF, 0xFFFFFFFF, 0xFF1542B7],
+		[0xFF12FA05, 0xFFFFFFFF, 0xFF0A4447],
+		[0xFFF9393F, 0xFFFFFFFF, 0xFF651038]];
+		
+	@saveVar public static var arrowRGBquant:Array<Array<FlxColor>> = [
+		[0xFFE51919, 0xFFFFFF, 0xFF5B0A30], // 4th
+		[0xFF193BE5, 0xFFFFFF, 0xFF0A3B5B], // 8th
+		[0xFFA119E5, 0xFFFFFF, 0xFF1D0A5B], // 12th
+		[0xFF26D93E, 0xFFFFFF, 0xFF24560F], // 16th
+		[0xFF0000B2, 0xFFFFFF, 0xFF002247], // 20th
+		[0xFFA119E5, 0xFFFFFF, 0xFF1D0A5B], // 24th
+		[0xFFE5C319, 0xFFFFFF, 0xFF5B2A0A], // 32nd
+		[0xFFA119E5, 0xFFFFFF, 0xFF1D0A5B], // 48th
+		[0xFF13ECA4, 0xFFFFFF, 0xFF085D18], // 64th
+		[0xFF3A3A6C, 0xFFFFFF, 0xFF17202B], // 96th
+		[0xFF3A3A6C, 0xFFFFFF, 0xFF17202B] // 192nd
+	];
+	
 	@saveVar public static var arrowHSV:Array<Array<Int>> = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
 	@saveVar public static var quantHSV:Array<Array<Int>> = [
 		[0, -20, 0], // 4th
@@ -187,15 +218,33 @@ class ClientPrefs
 		]
 	];
 	
+	/**
+	 * Contains keys that mute the game volume
+	 * 
+	 * default is `0`
+	 */
+	public static var muteKeys:Array<FlxKey> = [FlxKey.ZERO];
+	
+	/**
+	 * Contains keys that turn down the game volume
+	 * 
+	 * default is `-`
+	 */
+	public static var volumeDownKeys:Array<FlxKey> = [FlxKey.NUMPADMINUS, FlxKey.MINUS];
+	
+	/**
+	 * Contains keys that turn up the game volume
+	 * 
+	 * default is `+`
+	 */
+	public static var volumeUpKeys:Array<FlxKey> = [FlxKey.NUMPADPLUS, FlxKey.PLUS];
+	
 	public static function flush()
 	{
-		// FlxG.save.data.achievementsMap = Achievements.achievementsMap;
-		// FlxG.save.data.henchmenDeath = Achievements.henchmenDeath;
-		
 		FlxG.save.flush();
 		
 		var save:FlxSave = new FlxSave();
-		save.bind('controls_v2', 'ninjamuffin99'); // Placing this in a separate save so that it can be manually deleted without removing your Score and stuff
+		save.bind('controls_v2', 'nmvTeam'); 
 		save.data.customControls = keyBinds;
 		save.close();
 	}
@@ -211,7 +260,7 @@ class ClientPrefs
 		
 		if (FlxG.save.data.mute != null) FlxG.sound.muted = FlxG.save.data.mute;
 		
-		if (Main.fpsVar != null) Main.fpsVar.visible = showFPS;
+		if (DebugDisplay.instance != null) DebugDisplay.instance.visible = showFPS;
 		
 		if (FlxG.save.data.framerate == null) framerate = Std.int(FlxMath.bound(FlxG.stage.application.window.displayMode.refreshRate, 60, 240));
 		
@@ -227,13 +276,20 @@ class ClientPrefs
 		}
 		
 		var save:FlxSave = new FlxSave();
-		save.bind('controls_v2', 'ninjamuffin99');
-		if (save != null && save.data.customControls != null)
+		save.bind('controls_v2', 'nmvTeam');
+		if (save != null)
 		{
-			CoolUtil.copyMapValues(save.data.customControls, keyBinds);
-			
-			reloadControls();
+			try
+			{
+				if (save.data.customControls != null) CoolUtil.copyMapValues(save.data.customControls, keyBinds);
+			}
+			catch (e:haxe.Exception)
+			{
+				trace(e);
+			}
 		}
+		reloadControls();
+		
 		save.destroy();
 	}
 	
@@ -246,12 +302,13 @@ class ClientPrefs
 	{
 		PlayerSettings.player1.controls.setKeyboardScheme(KeyboardScheme.Solo);
 		
-		FlxG.sound.muteKeys = Init.muteKeys;
-		FlxG.sound.volumeDownKeys = Init.volumeDownKeys;
-		FlxG.sound.volumeUpKeys = Init.volumeUpKeys;
-		Init.muteKeys = copyKey(keyBinds.get('volume_mute'));
-		Init.volumeDownKeys = copyKey(keyBinds.get('volume_down'));
-		Init.volumeUpKeys = copyKey(keyBinds.get('volume_up'));
+		ClientPrefs.muteKeys = copyKey(keyBinds.get('volume_mute'));
+		ClientPrefs.volumeDownKeys = copyKey(keyBinds.get('volume_down'));
+		ClientPrefs.volumeUpKeys = copyKey(keyBinds.get('volume_up'));
+		
+		FlxG.sound.muteKeys = ClientPrefs.muteKeys;
+		FlxG.sound.volumeDownKeys = ClientPrefs.volumeDownKeys;
+		FlxG.sound.volumeUpKeys = ClientPrefs.volumeUpKeys;
 	}
 	
 	public static function copyKey(arrayToCopy:Array<FlxKey>):Array<FlxKey>

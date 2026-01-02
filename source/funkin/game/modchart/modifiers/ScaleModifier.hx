@@ -6,7 +6,7 @@ import flixel.math.FlxPoint;
 
 import funkin.game.modchart.Modifier.ModifierOrder;
 import funkin.states.*;
-import funkin.objects.*;
+import funkin.objects.note.*;
 
 class ScaleModifier extends NoteModifier
 {
@@ -29,6 +29,13 @@ class ScaleModifier extends NoteModifier
 		
 		scale.x *= 1 - miniX;
 		scale.y *= 1 - miniY;
+		
+		if (sprite is StrumNote)
+		{
+			scale.x *= 1 - getSubmodValue('receptor${data}ScaleX', player);
+			scale.y *= 1 - getSubmodValue('receptor${data}ScaleX', player);
+		}
+		
 		var angle = 0;
 		
 		var stretch = getSubmodValue("stretch", player) + getSubmodValue('stretch${data}', player);
@@ -40,11 +47,14 @@ class ScaleModifier extends NoteModifier
 		var squishX = lerp(1, 2, squish);
 		var squishY = lerp(1, 0.5, squish);
 		
-		scale.x *= (Math.sin(angle * Math.PI / 180) * squishY) + (Math.cos(angle * Math.PI / 180) * squishX);
-		scale.x *= (Math.sin(angle * Math.PI / 180) * stretchY) + (Math.cos(angle * Math.PI / 180) * stretchX);
+		final sinAngle = FlxMath.fastSin(angle * Math.PI / 180);
+		final sinCos = FlxMath.fastCos(angle * Math.PI / 180);
 		
-		scale.y *= (Math.cos(angle * Math.PI / 180) * stretchY) + (Math.sin(angle * Math.PI / 180) * stretchX);
-		scale.y *= (Math.cos(angle * Math.PI / 180) * squishY) + (Math.sin(angle * Math.PI / 180) * squishX);
+		scale.x *= (sinAngle * squishY) + (sinCos * squishX);
+		scale.x *= (sinAngle * stretchY) + (sinCos * stretchX);
+		
+		scale.y *= (sinCos * stretchY) + (sinAngle * stretchX);
+		scale.y *= (sinCos * squishY) + (sinAngle * squishX);
 		if ((sprite is Note) && sprite.isSustainNote) scale.y = y;
 		
 		return scale;
