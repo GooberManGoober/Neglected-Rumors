@@ -27,7 +27,7 @@ class Paths
 	/**
 	 * Mod directory
 	 */
-	public static inline final MODS_DIRECTORY = #if ASSET_REDIRECT trail + 'content' #else 'content' #end;
+	public static inline final MODS_DIRECTORY = #if ASSET_REDIRECT trail + 'mods' #else 'mods' #end;
 	
 	public static inline final SOUND_EXT = "ogg";
 	public static inline final VIDEO_EXT = "mp4";

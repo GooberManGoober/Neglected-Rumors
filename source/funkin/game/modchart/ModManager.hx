@@ -338,4 +338,8 @@ class ModManager
 	}
 	
 	public function queueFuncOnce(step:Float, callback:(CallbackEvent, Float) -> Void) timeline.addEvent(new CallbackEvent(step, callback, this));
+
+	public function randomFloat(minVal:Float, maxVal:Float):Float { //WHO LET DEWOTT CODE AGAIN
+		return FlxG.random.float(minVal, maxVal);
+	}
 }

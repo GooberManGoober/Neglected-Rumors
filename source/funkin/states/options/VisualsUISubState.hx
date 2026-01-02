@@ -11,7 +11,7 @@ class VisualsUISubState extends BaseOptionsMenu
 		title = 'Visuals and UI';
 		rpcTitle = 'Visuals & UI Settings Menu'; // for Discord Rich Presence
 		
-		var option:Option = new Option('Note Skin', 
+		var option:Option = new Option('Note Skin:', 
 			'Changes how notes look. Quants change colour depending on the beat it\'s at, while vanilla is normal FNF',
 			'noteSkin',
 			'string',

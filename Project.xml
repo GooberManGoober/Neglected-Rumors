@@ -2,7 +2,7 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="FNF: Neglected Rumors" file="NeglectedRumors" packageName="com.gemfem.neglectedrumors" package="com.gemfem.neglectedrumors" main="Main" version="0.2.7" company="Gemmie Femmie" />
+	<app title="FNF: Neglected Rumors" file="NeglectedRumors" packageName="com.gemfem.neglectedrumors" package="com.gemfem.neglectedrumors" main="Main" version="0.2.7" company="GemmieFemmie" />
 
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
@@ -57,7 +57,7 @@
 	<assets path='assets/embeds' rename='assets' embed="true" />
 	<assets path="assets/game" rename="assets"/>
 
-	<assets path='content' embed='false' if="MODS_ALLOWED"/>
+	<assets path='example_mods' rename="mods" embed='false' if="MODS_ALLOWED"/>
 
 	<!--OpenAL config--> 	<!-- appreciate you cyn0x8 and smokey for finding this -->
 	<section if="desktop">
@@ -68,23 +68,20 @@
 	<!-- _______________________________ Haxe libraries ______________________________ -->
 
 	<!--Core engine libraries-->
-	<haxelib name="openfl"/>
+	<haxelib name="openfl" version="9.4.1"/>
 
-	<haxelib name="flixel"/>
-	<haxelib name="flixel-addons"/>
-	<haxelib name="flixel-ui"/>
+	<haxelib name="flixel" version="6.0.0"/>
+	<haxelib name="flixel-addons" version="3.3.2"/>
+	<haxelib name="flixel-ui" version="2.6.4"/>
 
-	<haxelib name="flxanimate"/>
-
-	<!-- <haxelib name="haxeui-core" /> -->
-	<!-- <haxelib name="haxeui-flixel" /> -->
+	<haxelib name="flxanimate" version="git"/>
 	
-	<haxelib name="hscript-iris"/>
+	<haxelib name="hscript-iris" version="1.1.3"/>
 
 	<!--Extra Libraries-->
-	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
-	<haxelib name="discord_rpc" if="DISCORD_ALLOWED"/>
-	<haxelib name="hxvlc" if="VIDEOS_ALLOWED"/>
+	<haxelib name="linc_luajit" if="LUA_ALLOWED" version="git"/>
+	<haxelib name="discord_rpc" if="DISCORD_ALLOWED" version="git"/>
+	<haxelib name="hxvlc" if="VIDEOS_ALLOWED" version="2.0.1"/>
 
 	<!-- ______________________________ macros _____________________________ -->
 
